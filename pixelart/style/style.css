@@ -1,0 +1,47 @@
+
+.dark-nav {
+	height: 8vh;
+	background: linear-gradient(#0e033b, #1d2e66);
+	padding: 0 30px;
+}
+
+.dark {
+	background: #0e033b;
+	height: 92vh;
+	padding: 20px 0;
+}
+
+.dark-btn {
+	background: #294d87;
+	border: 0;
+	color: #7f9ac7;
+	text-shadow: 1px 1px #6a7c99;
+}
+
+.nav-elem {
+	color: #7f9ac7;
+	margin: 0 5px;
+	width: 80px;
+	height: 100%;
+	text-align: center;
+}
+
+.canvas {
+}
+
+td {
+  height: 15px;
+  width: 15px;
+  background-color: #E5E1FF;
+  float: left;
+  border: 1px dashed rgba(174, 111, 245, 0.4);
+}
+
+tr {
+    background-color: #0e033b;
+}
+
+footer {
+	text-align: center;
+	color: #96aac8aa;
+}
