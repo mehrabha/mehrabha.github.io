@@ -1,0 +1,259 @@
+<!DOCTYPE HTML>
+
+<html>
+<canvas id="mazeCanvas" width="600" height="600">
+</canvas>
+
+<script>
+    // Canvas width should be SIZE * (BLOCK_LENGTH + DIVIDER_LENGTH)
+    var SIZE = 20;
+    var BLOCK_LENGTH = 25;
+    var DIVIDER_LENGTH = 5;
+    var FRAMES_PER_SECOND = 15;
+
+    var canvas;
+    var canvasContext;
+    var grid = new Array(SIZE);
+    var openSet = [];
+    var closedSet = [];
+    var path = [];
+
+    class Block {
+        constructor(row, col) {
+            this.i = row;
+            this.j = col;
+
+            this.f = 0;
+            this.g = 0;
+            this.h = 0;
+
+            this.available = Math.floor(Math.random() * 10) + 1;
+            this.status = "default";
+            this.previous = undefined;
+            this.neighbors = [];
+        }
+
+        evaluateF(){
+            this.f = this.g + this.h;
+        }
+
+        findH() {
+            var x_distance = (SIZE - 1) - this.j;
+            var y_distance = (SIZE - 1) - this.i;
+            this.h = Math.sqrt(Math.pow(x_distance, 2) + Math.pow(y_distance, 2));
+        }
+
+        findNeighbors() {
+            if (this.i < SIZE - 1) {
+                this.neighbors.push(grid[this.i + 1][this.j]);
+            }
+
+            if (this.i > 0) {
+                this.neighbors.push(grid[this.i - 1][this.j]);
+            }
+
+            if (this.j < SIZE - 1) {
+                this.neighbors.push(grid[this.i][this.j + 1]);
+            }
+
+            if (this.j > 0) {
+                this.neighbors.push(grid[this.i][this.j - 1]);
+            }
+        }
+    }
+
+    function createGrid(size) {
+        for (var i = 0; i < size; i++) {
+            grid[i] = new Array(size);
+
+            for (var j = 0; j < size; j++) {
+                grid[i][j] = new Block(i, j);
+            }
+        }
+
+        for (var i = 0; i < size; i++) {
+            for (var j = 0; j < size; j++) {
+                grid[i][j].findNeighbors();
+                grid[i][j].findH();
+            }
+        }
+    }
+
+    function removeElement(set, block) {
+        for (var i = set.length - 1; i >= 0; i--) {
+            if (set[i] == block) {
+                set.splice(i, 1);
+            }
+        }
+    }
+
+    function run() {
+        var refresh_id = setInterval(function () {
+            updateStatus();
+
+            if (grid[0][0].status == "blocked") {
+                // [0][0] is blocked, no solutions
+                clearInterval(refresh_id);
+                printGrid();
+                alert("[0][0] is blocked, no solutions for this maze.");
+                return;
+            }
+
+            if (openSet.length <= 0) {
+                clearInterval(refresh_id);
+                printGrid();
+                alert("No solutions for this maze.");
+                return;
+            }
+
+            // Find lowest f in the open set
+            var lowest_f = 0;
+            for (var i = 0; i < openSet.length; i++) {
+                if (openSet[i].f < openSet[lowest_f].f) {
+                    lowest_f = i;
+                }
+            }
+
+            var current_block = openSet[lowest_f];
+
+            if (current_block == grid[SIZE - 1][SIZE - 1]) {
+                // Reached the last block, solved
+                current_block.status = "path";
+
+                // Find solution
+                while (current_block.previous) {
+                    current_block.previous.status = "path";
+                    current_block = current_block.previous;
+                    console.log("path added");
+                }
+                clearInterval(refresh_id);
+                printGrid();
+                alert("Solved");
+                return;
+            }
+
+            // Remove from open set and push to closed set
+            removeElement(openSet, current_block);
+            closedSet.push(current_block);
+
+            for (var i = 0; i < current_block.neighbors.length; i++) {
+                // For each neighbor
+                var neighbor = current_block.neighbors[i];
+
+                if (!closedSet.includes(neighbor) && neighbor.status != "blocked") {
+                    // If neighbor not in closed set and not a wall
+                    var new_score = current_block.g + 1;
+
+                    if (openSet.includes(neighbor)) {
+                        // If in open set, the neighbor has a g score
+                        if (new_score < neighbor.g) {
+                            // If new score has smaller g, set as new g
+                            neighbor.g = new_score;
+
+                            // Add the g and h value
+                            neighbor.evaluateF();
+                            neighbor.previous = current_block;
+                        }
+                    } else {
+                        // Neighbor g score has not been evaluated, set new g and push to openSet
+                        neighbor.g = new_score;
+                        openSet.push(neighbor);
+
+                        // Add the g and h value
+                        neighbor.evaluateF();
+                        neighbor.previous = current_block;
+                    }
+                }
+            }
+            updateStatus();
+
+            // Temporary solution
+            current_block.status = "path";
+            while (current_block.previous) {
+                current_block.previous.status = "path";
+                current_block = current_block.previous;
+            }
+
+            printGrid();
+        }, 1000 / FRAMES_PER_SECOND);
+    }
+
+    function setObstacles() {
+        //for (var i = 0;
+    }
+
+    function updateStatus() {
+        for (var i = 0; i < openSet.length ; i++) {
+            openSet[i].status = "open";
+        }
+
+        for (var i = 0; i < closedSet.length; i++) {
+            closedSet[i].status = "closed";
+        }
+
+        for (var i = 0; i < SIZE; i++) {
+            for (var j = 0; j < SIZE; j++) {
+                if (grid[i][j].available < 4) {
+                    if ((i > 1 || j > 1) && (i < SIZE - 2 || j < SIZE - 2)) {
+                        grid[i][j].status = "blocked";
+                    }
+                }
+            }
+        }
+    }
+
+    function printGrid() {
+        for (var i = 0; i < SIZE; i++) {
+            for (var j = 0; j < SIZE; j++) {
+                if (grid[i][j].status == "default") {
+                    var x_pos = (BLOCK_LENGTH + DIVIDER_LENGTH) * j;
+                    var y_pos = (BLOCK_LENGTH + DIVIDER_LENGTH) * i;
+                    canvasContext.fillStyle = 'white';
+                    canvasContext.fillRect(x_pos, y_pos, BLOCK_LENGTH, BLOCK_LENGTH);
+                }
+
+                if (grid[i][j].status == "open") {
+                    var x_pos = (BLOCK_LENGTH + DIVIDER_LENGTH) * j;
+                    var y_pos = (BLOCK_LENGTH + DIVIDER_LENGTH) * i;
+                    canvasContext.fillStyle = 'green';
+                    canvasContext.fillRect(x_pos, y_pos, BLOCK_LENGTH, BLOCK_LENGTH);
+                }
+
+                if (grid[i][j].status == "closed") {
+                    var x_pos = (BLOCK_LENGTH + DIVIDER_LENGTH) * j;
+                    var y_pos = (BLOCK_LENGTH + DIVIDER_LENGTH) * i;
+                    canvasContext.fillStyle = 'red';
+                    canvasContext.fillRect(x_pos, y_pos, BLOCK_LENGTH, BLOCK_LENGTH);
+                }
+
+                if (grid[i][j].status == "path") {
+                    var x_pos = (BLOCK_LENGTH + DIVIDER_LENGTH) * j;
+                    var y_pos = (BLOCK_LENGTH + DIVIDER_LENGTH) * i;
+                    canvasContext.fillStyle = 'blue';
+                    canvasContext.fillRect(x_pos, y_pos, BLOCK_LENGTH, BLOCK_LENGTH);
+                }
+
+                if (grid[i][j].status == "blocked") {
+                    var x_pos = (BLOCK_LENGTH + DIVIDER_LENGTH) * j;
+                    var y_pos = (BLOCK_LENGTH + DIVIDER_LENGTH) * i;
+                    canvasContext.fillStyle = 'black';
+                    canvasContext.fillRect(x_pos, y_pos, BLOCK_LENGTH, BLOCK_LENGTH);
+                }
+            }
+        }
+    }
+
+    window.onload = function () {
+        canvas = document.getElementById('mazeCanvas');
+        canvasContext = canvas.getContext('2d');
+        canvasContext.fillStyle = 'black';
+        canvasContext.fillRect(0, 0, canvas.width, canvas.height);
+
+        createGrid(SIZE);
+        openSet.push(grid[0][0]);
+        run();
+        printGrid();
+    }
+
+</script>
+</html>
